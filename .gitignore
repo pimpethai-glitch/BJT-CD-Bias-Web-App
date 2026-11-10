@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+.Python
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Secrets / local config
+.env
+.env.*
+*.key
+*.pem
+
+# Logs / OS junk
+*.log
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Process/agent workspace (local only)
+.superpowers/

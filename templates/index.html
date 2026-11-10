@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BJT DC Bias — ENG29 2121 Lab 02</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main class="card">
+    <header class="head">
+      <p class="kicker">ENG29 2121 · LAB 02</p>
+      <h1>คำนวณ DC Bias ของ BJT Common-Emitter</h1>
+      <p class="sub">วงจร Voltage-Divider Bias · NPN · forward-active approximation</p>
+    </header>
+
+    <form method="post" action="/" class="form-grid" novalidate>
+      <div class="field">
+        <label for="vcc">VCC <span class="unit">[V]</span></label>
+        <input id="vcc" name="vcc" type="text" inputmode="decimal" value="{{ values.vcc }}">
+        {% if errors.vcc %}<p class="error">{{ errors.vcc }}</p>{% endif %}
+      </div>
+
+      <div class="field">
+        <label for="r1">R1 <span class="unit">[kΩ]</span> — ฐานไป VCC</label>
+        <input id="r1" name="r1" type="text" inputmode="decimal" value="{{ values.r1 }}">
+        {% if errors.r1 %}<p class="error">{{ errors.r1 }}</p>{% endif %}
+      </div>
+
+      <div class="field">
+        <label for="r2">R2 <span class="unit">[kΩ]</span> — ฐานไปกราวด์</label>
+        <input id="r2" name="r2" type="text" inputmode="decimal" value="{{ values.r2 }}">
+        {% if errors.r2 %}<p class="error">{{ errors.r2 }}</p>{% endif %}
+      </div>
+
+      <div class="field">
+        <label for="rc">RC <span class="unit">[kΩ]</span> — Collector</label>
+        <input id="rc" name="rc" type="text" inputmode="decimal" value="{{ values.rc }}">
+        {% if errors.rc %}<p class="error">{{ errors.rc }}</p>{% endif %}
+      </div>
+
+      <div class="field">
+        <label for="re">RE <span class="unit">[kΩ]</span> — Emitter</label>
+        <input id="re" name="re" type="text" inputmode="decimal" value="{{ values.re }}">
+        {% if errors.re %}<p class="error">{{ errors.re }}</p>{% endif %}
+      </div>
+
+      <div class="field">
+        <label for="beta">β (hFE) <span class="unit">[-]</span></label>
+        <input id="beta" name="beta" type="text" inputmode="decimal" value="{{ values.beta }}">
+        {% if errors.beta %}<p class="error">{{ errors.beta }}</p>{% endif %}
+      </div>
+
+      <div class="field">
+        <label for="vbe">VBE <span class="unit">[V]</span></label>
+        <input id="vbe" name="vbe" type="text" inputmode="decimal" value="{{ values.vbe }}">
+        {% if errors.vbe %}<p class="error">{{ errors.vbe }}</p>{% endif %}
+      </div>
+
+      <div class="actions">
+        <button type="submit">คำนวณ DC Bias</button>
+      </div>
+    </form>
+
+    {% if result %}
+    <section class="results">
+      <div class="result-head">
+        <h2>ผลการคำนวณ DC Bias</h2>
+        <span class="badge badge-{{ result.region.value }}">{{ region_label }}</span>
+      </div>
+
+      {% if result.warnings %}
+      <div class="warnings" role="status">
+        {% for warning in result.warnings %}
+        <p>{{ warning }}</p>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <table>
+        <caption class="visually-hidden">ผลลัพธ์ DC operating point พร้อมหน่วย</caption>
+        <tbody>
+          <tr><th scope="row">VB</th><td>{{ "%.3f"|format(result.vb) }} V</td></tr>
+          <tr><th scope="row">VE</th><td>{{ "%.3f"|format(result.ve) }} V</td></tr>
+          <tr><th scope="row">VC</th><td>{{ "%.3f"|format(result.vc) }} V</td></tr>
+          <tr><th scope="row">VCE</th><td>{{ "%.3f"|format(result.vce) }} V</td></tr>
+          <tr><th scope="row">IC</th><td>{{ "%.3f"|format(result.ic * 1000) }} mA</td></tr>
+          <tr><th scope="row">IE</th><td>{{ "%.3f"|format(result.ie * 1000) }} mA</td></tr>
+          <tr><th scope="row">IB</th><td>{{ "%.2f"|format(result.ib * 1e6) }} µA</td></tr>
+          <tr><th scope="row">VTH</th><td>{{ "%.3f"|format(result.vth) }} V</td></tr>
+          <tr><th scope="row">RTH</th><td>{{ "%.3f"|format(result.rth / 1000) }} kΩ</td></tr>
+        </tbody>
+      </table>
+    </section>
+    {% endif %}
+  </main>
+</body>
+</html>
