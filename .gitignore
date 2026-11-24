@@ -25,3 +25,8 @@ desktop.ini
 
 # Process/agent workspace (local only)
 .superpowers/
+docs/superpowers/
+.playwright-mcp/
+
+# Local simulator binaries (large; install ngspice or set NGSPICE_PATH instead)
+tools/

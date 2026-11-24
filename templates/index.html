@@ -3,96 +3,338 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>BJT DC Bias — ENG29 2121 Lab 02</title>
+  <title>BJT CE Amplifier Simulator — ENG29 2121 Lab 04</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
   <main class="card">
     <header class="head">
-      <p class="kicker">ENG29 2121 · LAB 02</p>
-      <h1>คำนวณ DC Bias ของ BJT Common-Emitter</h1>
-      <p class="sub">วงจร Voltage-Divider Bias · NPN · forward-active approximation</p>
+      <p class="kicker">ENG29 2121 · LAB 04</p>
+      <h1>BJT CE Amplifier Simulator</h1>
+      <p class="sub">DC Bias 3 แบบจาก Lab 03 · ngspice DC / AC / Transient สำหรับ CE Voltage Divider Reference</p>
     </header>
 
-    <form method="post" action="/" class="form-grid" novalidate>
-      <div class="field">
-        <label for="vcc">VCC <span class="unit">[V]</span></label>
-        <input id="vcc" name="vcc" type="text" inputmode="decimal" value="{{ values.vcc }}">
-        {% if errors.vcc %}<p class="error">{{ errors.vcc }}</p>{% endif %}
-      </div>
+    <section class="panel" aria-labelledby="analytical-heading">
+      <h2 id="analytical-heading">1 · DC Bias แบบประมาณ (Analytical)</h2>
+      <form method="post" action="/" class="form-grid" novalidate>
+        <input type="hidden" name="form" value="bias">
+        {% if errors %}
+        <div class="form-alert" role="alert" aria-live="polite">
+          <strong>ตรวจค่าที่กรอก</strong>
+          <ul>{% for key, message in errors.items() %}<li>{{ message }}</li>{% endfor %}</ul>
+        </div>
+        {% endif %}
 
-      <div class="field">
-        <label for="r1">R1 <span class="unit">[kΩ]</span> — ฐานไป VCC</label>
-        <input id="r1" name="r1" type="text" inputmode="decimal" value="{{ values.r1 }}">
-        {% if errors.r1 %}<p class="error">{{ errors.r1 }}</p>{% endif %}
-      </div>
+        <fieldset class="field-group">
+          <legend>1.1 · วงจรไบอัส</legend>
+          <div class="form-grid">
+            <div class="field mode-field">
+              <label for="mode">วงจรไบอัส</label>
+              <select id="mode" name="mode" aria-invalid="{% if errors.mode %}true{% else %}false{% endif %}" aria-describedby="{% if errors.mode %}err-b-mode{% endif %}">
+                <option value="divider" {% if mode == 'divider' %}selected{% endif %}>Voltage Divider Bias</option>
+                <option value="fixed" {% if mode == 'fixed' %}selected{% endif %}>Fixed Bias</option>
+                <option value="emitter" {% if mode == 'emitter' %}selected{% endif %}>Emitter Bias</option>
+              </select>
+              {% if errors.mode %}<p class="error" id="err-b-mode" role="alert" aria-live="polite">{{ errors.mode }}</p>{% endif %}
+              <p class="hint">เปลี่ยนโหมดแล้วกด “เปลี่ยนโหมด / โหลดฟอร์มใหม่” เพื่อสลับช่องที่ใช้</p>
+            </div>
 
-      <div class="field">
-        <label for="r2">R2 <span class="unit">[kΩ]</span> — ฐานไปกราวด์</label>
-        <input id="r2" name="r2" type="text" inputmode="decimal" value="{{ values.r2 }}">
-        {% if errors.r2 %}<p class="error">{{ errors.r2 }}</p>{% endif %}
-      </div>
+            <div class="field">
+              <label for="vcc">VCC <span class="unit">[V]</span></label>
+              <input id="vcc" name="vcc" type="text" inputmode="decimal" aria-invalid="{% if errors.vcc %}true{% else %}false{% endif %}" aria-describedby="{% if errors.vcc %}err-b-vcc{% endif %}" value="{{ values.vcc | default('', true) }}">
+              {% if errors.vcc %}<p class="error" id="err-b-vcc" role="alert" aria-live="polite">{{ errors.vcc }}</p>{% endif %}
+            </div>
 
-      <div class="field">
-        <label for="rc">RC <span class="unit">[kΩ]</span> — Collector</label>
-        <input id="rc" name="rc" type="text" inputmode="decimal" value="{{ values.rc }}">
-        {% if errors.rc %}<p class="error">{{ errors.rc }}</p>{% endif %}
-      </div>
+            {% if mode == 'fixed' or mode == 'emitter' %}
+            <div class="field">
+              <label for="rb">RB <span class="unit">[MΩ]</span> — VCC ไป Base</label>
+              <input id="rb" name="rb" type="text" inputmode="decimal" aria-invalid="{% if errors.rb %}true{% else %}false{% endif %}" aria-describedby="{% if errors.rb %}err-b-rb{% endif %}" value="{{ values.rb | default('', true) }}">
+              {% if errors.rb %}<p class="error" id="err-b-rb" role="alert" aria-live="polite">{{ errors.rb }}</p>{% endif %}
+            </div>
+            {% endif %}
 
-      <div class="field">
-        <label for="re">RE <span class="unit">[kΩ]</span> — Emitter</label>
-        <input id="re" name="re" type="text" inputmode="decimal" value="{{ values.re }}">
-        {% if errors.re %}<p class="error">{{ errors.re }}</p>{% endif %}
-      </div>
+            {% if mode == 'divider' %}
+            <div class="field">
+              <label for="r1">R1 <span class="unit">[kΩ]</span> — ฐานไป VCC</label>
+              <input id="r1" name="r1" type="text" inputmode="decimal" aria-invalid="{% if errors.r1 %}true{% else %}false{% endif %}" aria-describedby="{% if errors.r1 %}err-b-r1{% endif %}" value="{{ values.r1 | default('', true) }}">
+              {% if errors.r1 %}<p class="error" id="err-b-r1" role="alert" aria-live="polite">{{ errors.r1 }}</p>{% endif %}
+            </div>
 
-      <div class="field">
-        <label for="beta">β (hFE) <span class="unit">[-]</span></label>
-        <input id="beta" name="beta" type="text" inputmode="decimal" value="{{ values.beta }}">
-        {% if errors.beta %}<p class="error">{{ errors.beta }}</p>{% endif %}
-      </div>
+            <div class="field">
+              <label for="r2">R2 <span class="unit">[kΩ]</span> — ฐานไปกราวด์</label>
+              <input id="r2" name="r2" type="text" inputmode="decimal" aria-invalid="{% if errors.r2 %}true{% else %}false{% endif %}" aria-describedby="{% if errors.r2 %}err-b-r2{% endif %}" value="{{ values.r2 | default('', true) }}">
+              {% if errors.r2 %}<p class="error" id="err-b-r2" role="alert" aria-live="polite">{{ errors.r2 }}</p>{% endif %}
+            </div>
+            {% endif %}
 
-      <div class="field">
-        <label for="vbe">VBE <span class="unit">[V]</span></label>
-        <input id="vbe" name="vbe" type="text" inputmode="decimal" value="{{ values.vbe }}">
-        {% if errors.vbe %}<p class="error">{{ errors.vbe }}</p>{% endif %}
-      </div>
+            <div class="field">
+              <label for="rc">RC <span class="unit">[kΩ]</span> — Collector</label>
+              <input id="rc" name="rc" type="text" inputmode="decimal" aria-invalid="{% if errors.rc %}true{% else %}false{% endif %}" aria-describedby="{% if errors.rc %}err-b-rc{% endif %}" value="{{ values.rc | default('', true) }}">
+              {% if errors.rc %}<p class="error" id="err-b-rc" role="alert" aria-live="polite">{{ errors.rc }}</p>{% endif %}
+            </div>
 
-      <div class="actions">
-        <button type="submit">คำนวณ DC Bias</button>
-      </div>
-    </form>
+            {% if mode == 'divider' or mode == 'emitter' %}
+            <div class="field">
+              <label for="re">RE <span class="unit">[kΩ]</span> — Emitter</label>
+              <input id="re" name="re" type="text" inputmode="decimal" aria-invalid="{% if errors.re %}true{% else %}false{% endif %}" aria-describedby="{% if errors.re %}err-b-re{% endif %}" value="{{ values.re | default('', true) }}">
+              {% if errors.re %}<p class="error" id="err-b-re" role="alert" aria-live="polite">{{ errors.re }}</p>{% endif %}
+            </div>
+            {% endif %}
+          </div>
+        </fieldset>
 
-    {% if result %}
-    <section class="results">
-      <div class="result-head">
-        <h2>ผลการคำนวณ DC Bias</h2>
-        <span class="badge badge-{{ result.region.value }}">{{ region_label }}</span>
-      </div>
+        <fieldset class="field-group">
+          <legend>1.2 · พารามิเตอร์ทรานซิสเตอร์</legend>
+          <div class="form-grid">
+            <div class="field">
+              <label for="beta">β (hFE) <span class="unit">[-]</span></label>
+              <input id="beta" name="beta" type="text" inputmode="decimal" aria-invalid="{% if errors.beta %}true{% else %}false{% endif %}" aria-describedby="{% if errors.beta %}err-b-beta{% endif %}" value="{{ values.beta | default('', true) }}">
+              {% if errors.beta %}<p class="error" id="err-b-beta" role="alert" aria-live="polite">{{ errors.beta }}</p>{% endif %}
+            </div>
 
-      {% if result.warnings %}
-      <div class="warnings" role="status">
-        {% for warning in result.warnings %}
-        <p>{{ warning }}</p>
-        {% endfor %}
-      </div>
+            <div class="field">
+              <label for="vbe">VBE <span class="unit">[V]</span></label>
+              <input id="vbe" name="vbe" type="text" inputmode="decimal" aria-invalid="{% if errors.vbe %}true{% else %}false{% endif %}" aria-describedby="{% if errors.vbe %}err-b-vbe{% endif %}" value="{{ values.vbe | default('', true) }}">
+              {% if errors.vbe %}<p class="error" id="err-b-vbe" role="alert" aria-live="polite">{{ errors.vbe }}</p>{% endif %}
+            </div>
+          </div>
+        </fieldset>
+
+        <div class="actions">
+          <button type="submit" name="action" value="change" class="secondary">เปลี่ยนโหมด / โหลดฟอร์มใหม่</button>
+          <button type="submit" name="action" value="calculate">คำนวณ DC Bias</button>
+        </div>
+      </form>
+
+      {% if result %}
+      <section class="results">
+        <div class="result-head">
+          <h2>ผลการคำนวณ DC Bias — {{ mode_labels[mode] }}</h2>
+          <span class="badge badge-{{ result.region.value }}">{{ region_label }}</span>
+        </div>
+
+        {% if result.warnings %}
+        <div class="warnings" role="status">
+          {% for warning in result.warnings %}
+          <p>{{ warning }}</p>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <table>
+          <caption class="visually-hidden">ผลลัพธ์ DC operating point ของ {{ mode_labels[mode] }} พร้อมหน่วย</caption>
+          <tbody>
+            <tr><th scope="row">VB</th><td>{{ "%.3f"|format(result.vb) }} V</td></tr>
+            <tr><th scope="row">VE</th><td>{{ "%.3f"|format(result.ve) }} V</td></tr>
+            <tr><th scope="row">VC</th><td>{{ "%.3f"|format(result.vc) }} V</td></tr>
+            <tr><th scope="row">VCE</th><td>{{ "%.3f"|format(result.vce) }} V</td></tr>
+            <tr><th scope="row">IC</th><td>{{ "%.3f"|format(result.ic * 1000) }} mA</td></tr>
+            <tr><th scope="row">IE</th><td>{{ "%.3f"|format(result.ie * 1000) }} mA</td></tr>
+            <tr><th scope="row">IB</th><td>{{ "%.2f"|format(result.ib * 1e6) }} µA</td></tr>
+            {% if mode == 'divider' %}
+            <tr><th scope="row">VTH</th><td>{{ "%.3f"|format(result.vth) }} V</td></tr>
+            <tr><th scope="row">RTH</th><td>{{ "%.3f"|format(result.rth / 1000) }} kΩ</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </section>
+      {% endif %}
+    </section>
+
+    <section class="panel" aria-labelledby="sim-heading">
+      <h2 id="sim-heading">2 · CE Reference — จำลองด้วย ngspice</h2>
+      <p class="soft">วงจร voltage-divider เดียวกัน: R1/R2 แบ่งแรงดันฐาน, RC/RE, Cin/Cout และ RL — ไม่มี bypass capacitor</p>
+      <form method="post" action="/" class="form-grid" novalidate>
+        <input type="hidden" name="form" value="spice">
+        {% if spice_errors %}
+        <div class="form-alert" role="alert" aria-live="polite">
+          <strong>ตรวจค่าก่อนรัน ngspice</strong>
+          <ul>{% for key, message in spice_errors.items() %}<li>{{ message }}</li>{% endfor %}</ul>
+        </div>
+        {% endif %}
+
+        <fieldset class="field-group mode-group">
+          <legend>2.1 · ประเภทการจำลอง</legend>
+          <div class="form-grid">
+            <div class="field mode-field">
+              <label for="analysis">Analysis Mode</label>
+              <select id="analysis" name="analysis" aria-invalid="{% if spice_errors.analysis %}true{% else %}false{% endif %}" aria-describedby="{% if spice_errors.analysis %}err-s-analysis{% endif %}">
+                <option value="dc" {% if analysis == 'dc' %}selected{% endif %}>DC — Operating point (.op)</option>
+                <option value="ac" {% if analysis == 'ac' %}selected{% endif %}>AC — Frequency response (.ac)</option>
+                <option value="transient" {% if analysis == 'transient' %}selected{% endif %}>Transient — Waveform (.tran)</option>
+              </select>
+              {% if spice_errors.analysis %}<p class="error" id="err-s-analysis" role="alert" aria-live="polite">{{ spice_errors.analysis }}</p>{% endif %}
+              <p class="hint">เปลี่ยน analysis แล้วกด “โหลดฟอร์ม”, หรือกรอกค่แล้วกด “Run Simulation”</p>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="field-group">
+          <legend>2.2 · เครือข่ายไบอัส</legend>
+          <div class="form-grid">
+            <div class="field">
+              <label for="s-vcc">VCC <span class="unit">[V]</span></label>
+              <input id="s-vcc" name="vcc" type="text" inputmode="decimal" aria-invalid="{% if spice_errors.vcc %}true{% else %}false{% endif %}" aria-describedby="{% if spice_errors.vcc %}err-s-vcc{% endif %}" value="{{ spice_values.vcc | default('', true) }}">
+              {% if spice_errors.vcc %}<p class="error" id="err-s-vcc" role="alert" aria-live="polite">{{ spice_errors.vcc }}</p>{% endif %}
+            </div>
+            <div class="field">
+              <label for="s-r1">R1 <span class="unit">[kΩ]</span></label>
+              <input id="s-r1" name="r1" type="text" inputmode="decimal" aria-invalid="{% if spice_errors.r1 %}true{% else %}false{% endif %}" aria-describedby="{% if spice_errors.r1 %}err-s-r1{% endif %}" value="{{ spice_values.r1 | default('', true) }}">
+              {% if spice_errors.r1 %}<p class="error" id="err-s-r1" role="alert" aria-live="polite">{{ spice_errors.r1 }}</p>{% endif %}
+            </div>
+            <div class="field">
+              <label for="s-r2">R2 <span class="unit">[kΩ]</span></label>
+              <input id="s-r2" name="r2" type="text" inputmode="decimal" aria-invalid="{% if spice_errors.r2 %}true{% else %}false{% endif %}" aria-describedby="{% if spice_errors.r2 %}err-s-r2{% endif %}" value="{{ spice_values.r2 | default('', true) }}">
+              {% if spice_errors.r2 %}<p class="error" id="err-s-r2" role="alert" aria-live="polite">{{ spice_errors.r2 }}</p>{% endif %}
+            </div>
+            <div class="field">
+              <label for="s-rc">RC <span class="unit">[kΩ]</span></label>
+              <input id="s-rc" name="rc" type="text" inputmode="decimal" aria-invalid="{% if spice_errors.rc %}true{% else %}false{% endif %}" aria-describedby="{% if spice_errors.rc %}err-s-rc{% endif %}" value="{{ spice_values.rc | default('', true) }}">
+              {% if spice_errors.rc %}<p class="error" id="err-s-rc" role="alert" aria-live="polite">{{ spice_errors.rc }}</p>{% endif %}
+            </div>
+            <div class="field">
+              <label for="s-re">RE <span class="unit">[kΩ]</span></label>
+              <input id="s-re" name="re" type="text" inputmode="decimal" aria-invalid="{% if spice_errors.re %}true{% else %}false{% endif %}" aria-describedby="{% if spice_errors.re %}err-s-re{% endif %}" value="{{ spice_values.re | default('', true) }}">
+              {% if spice_errors.re %}<p class="error" id="err-s-re" role="alert" aria-live="polite">{{ spice_errors.re }}</p>{% endif %}
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="field-group">
+          <legend>2.3 · ตัวเก็บประจุและโหลด</legend>
+          <div class="form-grid">
+            <div class="field">
+              <label for="s-rl">RL <span class="unit">[kΩ]</span></label>
+              <input id="s-rl" name="rl" type="text" inputmode="decimal" aria-invalid="{% if spice_errors.rl %}true{% else %}false{% endif %}" aria-describedby="{% if spice_errors.rl %}err-s-rl{% endif %}" value="{{ spice_values.rl | default('', true) }}">
+              {% if spice_errors.rl %}<p class="error" id="err-s-rl" role="alert" aria-live="polite">{{ spice_errors.rl }}</p>{% endif %}
+            </div>
+            <div class="field">
+              <label for="s-cin">Cin <span class="unit">[µF]</span></label>
+              <input id="s-cin" name="cin" type="text" inputmode="decimal" aria-invalid="{% if spice_errors.cin %}true{% else %}false{% endif %}" aria-describedby="{% if spice_errors.cin %}err-s-cin{% endif %}" value="{{ spice_values.cin | default('', true) }}">
+              {% if spice_errors.cin %}<p class="error" id="err-s-cin" role="alert" aria-live="polite">{{ spice_errors.cin }}</p>{% endif %}
+            </div>
+            <div class="field">
+              <label for="s-cout">Cout <span class="unit">[µF]</span></label>
+              <input id="s-cout" name="cout" type="text" inputmode="decimal" aria-invalid="{% if spice_errors.cout %}true{% else %}false{% endif %}" aria-describedby="{% if spice_errors.cout %}err-s-cout{% endif %}" value="{{ spice_values.cout | default('', true) }}">
+              {% if spice_errors.cout %}<p class="error" id="err-s-cout" role="alert" aria-live="polite">{{ spice_errors.cout }}</p>{% endif %}
+            </div>
+          </div>
+        </fieldset>
+
+        {% if analysis != 'dc' %}
+        <fieldset class="field-group">
+          <legend>2.4 · แหล่งสัญญาณ</legend>
+          <div class="form-grid">
+            <div class="field">
+              <label for="s-amplitude">Vin amplitude <span class="unit">[mV peak]</span></label>
+              <input id="s-amplitude" name="amplitude" type="text" inputmode="decimal" aria-invalid="{% if spice_errors.amplitude %}true{% else %}false{% endif %}" aria-describedby="{% if spice_errors.amplitude %}err-s-amplitude{% endif %}" value="{{ spice_values.amplitude | default('', true) }}">
+              {% if spice_errors.amplitude %}<p class="error" id="err-s-amplitude" role="alert" aria-live="polite">{{ spice_errors.amplitude }}</p>{% endif %}
+            </div>
+            <div class="field">
+              <label for="s-frequency">Frequency <span class="unit">[kHz]</span></label>
+              <input id="s-frequency" name="frequency" type="text" inputmode="decimal" aria-invalid="{% if spice_errors.frequency %}true{% else %}false{% endif %}" aria-describedby="{% if spice_errors.frequency %}err-s-frequency{% endif %}" value="{{ spice_values.frequency | default('', true) }}">
+              {% if spice_errors.frequency %}<p class="error" id="err-s-frequency" role="alert" aria-live="polite">{{ spice_errors.frequency }}</p>{% endif %}
+            </div>
+          </div>
+        </fieldset>
+        {% endif %}
+
+        <div class="actions">
+          <button type="submit" name="action" value="change" class="secondary">โหลดฟอร์มตาม Analysis</button>
+          <button type="submit" name="action" value="run">Run Simulation</button>
+        </div>
+      </form>
+
+      {% if sim_error %}
+      <section class="results error-state" role="alert">
+        <div class="run-strip" role="status"><span class="run-pill">Run Status: Error</span></div>
+        <div class="result-head"><h2>Run Status: Error</h2></div>
+        <p>{{ sim_error }}</p>
+        {% if sim_log %}<details><summary>log จาก solver</summary><pre>{{ sim_log }}</pre></details>{% endif %}
+      </section>
       {% endif %}
 
-      <table>
-        <caption class="visually-hidden">ผลลัพธ์ DC operating point พร้อมหน่วย</caption>
-        <tbody>
-          <tr><th scope="row">VB</th><td>{{ "%.3f"|format(result.vb) }} V</td></tr>
-          <tr><th scope="row">VE</th><td>{{ "%.3f"|format(result.ve) }} V</td></tr>
-          <tr><th scope="row">VC</th><td>{{ "%.3f"|format(result.vc) }} V</td></tr>
-          <tr><th scope="row">VCE</th><td>{{ "%.3f"|format(result.vce) }} V</td></tr>
-          <tr><th scope="row">IC</th><td>{{ "%.3f"|format(result.ic * 1000) }} mA</td></tr>
-          <tr><th scope="row">IE</th><td>{{ "%.3f"|format(result.ie * 1000) }} mA</td></tr>
-          <tr><th scope="row">IB</th><td>{{ "%.2f"|format(result.ib * 1e6) }} µA</td></tr>
-          <tr><th scope="row">VTH</th><td>{{ "%.3f"|format(result.vth) }} V</td></tr>
-          <tr><th scope="row">RTH</th><td>{{ "%.3f"|format(result.rth / 1000) }} kΩ</td></tr>
-        </tbody>
-      </table>
+      {% if sim_result %}
+      <section class="results spice-results">
+        <div class="run-strip" role="status">
+          <span class="run-pill">Run Status: Success</span>
+          <span>Engine <strong>{{ sim_result.engine }}</strong></span>
+          <span>{{ analysis_labels[sim_result.analysis] }}</span>
+          <span>Data points <strong>{{ sim_result.point_count }}</strong></span>
+        </div>
+        <div class="result-head">
+          <h2>Engineering Results — ผลจาก ngspice</h2>
+        </div>
+
+        <dl class="provenance">
+          <dt>Engine</dt><dd>{{ sim_result.engine }}</dd>
+          <dt>Analysis</dt><dd>{{ analysis_labels[sim_result.analysis] }}</dd>
+          <dt>BJT Model</dt><dd>{{ sim_result.model }}</dd>
+          <dt>Data points</dt><dd>{{ sim_result.point_count }}</dd>
+        </dl>
+
+        {% if sim_result.warnings %}
+        <div class="warnings" role="status">
+          {% for warning in sim_result.warnings %}<p>{{ warning }}</p>{% endfor %}
+        </div>
+        {% endif %}
+
+        {% if sim_result.dc %}
+        <h3>DC Operating Point</h3>
+        <table>
+          <caption class="visually-hidden">DC operating point จาก ngspice พร้อมหน่วย</caption>
+          <tbody>
+            <tr><th scope="row">VB</th><td>{{ "%.3f"|format(sim_result.dc.vb) }} V</td></tr>
+            <tr><th scope="row">VE</th><td>{{ "%.3f"|format(sim_result.dc.ve) }} V</td></tr>
+            <tr><th scope="row">VC</th><td>{{ "%.3f"|format(sim_result.dc.vc) }} V</td></tr>
+            <tr><th scope="row">VCE</th><td>{{ "%.3f"|format(sim_result.dc.vce) }} V</td></tr>
+            <tr><th scope="row">IC</th><td>{{ "%.3f"|format(sim_result.dc.ic * 1000) }} mA</td></tr>
+            <tr><th scope="row">IB</th><td>{{ "%.3f"|format(sim_result.dc.ib * 1e6) }} µA</td></tr>
+            <tr><th scope="row">IE</th><td>{{ "%.3f"|format(sim_result.dc.ie * 1000) }} mA</td></tr>
+          </tbody>
+        </table>
+        {% endif %}
+
+        {% if sim_result.ac %}
+        <h3>AC Frequency Response</h3>
+        <table>
+          <tbody>
+            <tr><th scope="row">Gain สูงสุด</th><td>{{ "%.2f"|format(sim_result.ac_summary.gain_mid_db) }} dB</td></tr>
+            <tr><th scope="row">Phase ที่ gain สูงสุด</th><td>{{ "%.1f"|format(sim_result.ac_summary.phase_mid_deg) }}°</td></tr>
+            <tr><th scope="row">Cutoff (-3 dB)</th><td>{{ sim_result.ac_summary.cutoff }}</td></tr>
+          </tbody>
+        </table>
+        <div class="chart-grid">
+          <figure class="chart">{{ gain_chart | safe }}<figcaption>Gain [dB] เทียบความถี่ [Hz] แบบ log — อ่านจากไฟล์ผล ngspice</figcaption></figure>
+          <figure class="chart">{{ phase_chart | safe }}<figcaption>Phase [deg] เทียบความถี่ [Hz] แบบ log — อ่านจากไฟล์ผล ngspice</figcaption></figure>
+        </div>
+        {% endif %}
+
+        {% if sim_result.transient %}
+        <h3>Transient Response</h3>
+        <table>
+          <tbody>
+            <tr><th scope="row">Vin peak</th><td>{{ "%.2f"|format(sim_result.transient_summary.vin_peak_mv) }} mV</td></tr>
+            <tr><th scope="row">Vout peak</th><td>{{ "%.2f"|format(sim_result.transient_summary.vout_peak_mv) }} mV</td></tr>
+            <tr><th scope="row">ทิศทางเฟส</th>
+              <td>{% if sim_result.transient_summary.phase_relation == 'inverted' %}กลับเฟส (~180°){% elif sim_result.transient_summary.phase_relation == 'non-inverted' %}ไม่กลับเฟส{% else %}ไม่สามารถสรุปได้{% endif %}</td>
+            </tr>
+          </tbody>
+        </table>
+        <figure class="chart">{{ wave_chart | safe }}<figcaption>Vin / Vout [V] เทียบเวลา [ms] — อ่านจากไฟล์ผล ngspice</figcaption></figure>
+        {% endif %}
+
+        <details class="evidence">
+          <summary>Netlist ที่ใช้รันจริง</summary>
+          <pre>{{ sim_result.netlist }}</pre>
+        </details>
+        <details class="evidence">
+          <summary>ngspice log (run status + engine output)</summary>
+          <pre>{{ sim_result.log }}</pre>
+        </details>
+      </section>
+      {% endif %}
     </section>
-    {% endif %}
   </main>
 </body>
 </html>

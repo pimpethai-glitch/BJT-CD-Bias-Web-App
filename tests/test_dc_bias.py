@@ -1,11 +1,15 @@
 import unittest
 
-from dc_bias import BiasInput, Region, ValidationError, parse_form, solve
+from dc_bias import BiasInput, Region, ValidationError, parse_form, solve, solve_mode
 
 VALID = {
     "vcc": "12", "r1": "100", "r2": "22", "rc": "2.2",
     "re": "1", "beta": "100", "vbe": "0.70",
 }
+FIXED = {
+    "vcc": "12", "rb": "1", "rc": "2.2", "beta": "100", "vbe": "0.70",
+}
+EMITTER = dict(FIXED, re="1")
 
 
 class ParseFormTests(unittest.TestCase):
@@ -124,6 +128,71 @@ class RegionTests(unittest.TestCase):
                 with self.assertRaises(ValidationError) as ctx:
                     parse_form(values)
                 self.assertIn(field, ctx.exception.errors)
+
+
+class Lab03ParseFormTests(unittest.TestCase):
+    def test_fixed_accepts_only_its_own_fields(self):
+        data = parse_form(FIXED, mode="fixed")
+        self.assertAlmostEqual(data.rb, 1.0)
+        self.assertEqual(data.r1, 0.0)
+
+    def test_emitter_requires_re(self):
+        values = dict(FIXED)
+        with self.assertRaises(ValidationError) as ctx:
+            parse_form(values, mode="emitter")
+        self.assertIn("re", ctx.exception.errors)
+
+    def test_divider_fields_are_not_required_in_fixed_mode(self):
+        values = dict(FIXED, r1="", r2="")
+        data = parse_form(values, mode="fixed")   # ต้องไม่สน r1/r2
+        self.assertAlmostEqual(data.rb, 1.0)
+
+    def test_fixed_rb_must_be_positive(self):
+        values = dict(FIXED, rb="0")
+        with self.assertRaises(ValidationError) as ctx:
+            parse_form(values, mode="fixed")
+        self.assertIn("rb", ctx.exception.errors)
+
+    def test_unknown_mode_rejected(self):
+        with self.assertRaises(ValidationError) as ctx:
+            parse_form(FIXED, mode="unknown")
+        self.assertIn("mode", ctx.exception.errors)
+
+
+class Lab03SolveModeTests(unittest.TestCase):
+    def test_fixed_reference_operating_point(self):
+        result = solve_mode("fixed", parse_form(FIXED, mode="fixed"))
+        self.assertAlmostEqual(result.ib * 1e6, 11.3, places=4)
+        self.assertAlmostEqual(result.ic * 1e3, 1.13, places=4)
+        self.assertAlmostEqual(result.ve, 0.0, places=9)
+        self.assertAlmostEqual(result.vb, 0.7, places=9)
+        self.assertAlmostEqual(result.vc, 9.514, places=4)
+        self.assertAlmostEqual(result.vce, 9.514, places=4)
+        self.assertIs(result.region, Region.ACTIVE)
+        self.assertEqual(result.warnings, ())
+
+    def test_rb_megaohm_to_ohm_scaling(self):
+        result = solve_mode("fixed", parse_form(FIXED, mode="fixed"))
+        # RB = 1 MΩ ต้องแปลงเป็น 1,000,000 Ω ไม่ใช่ 1,000 Ω
+        self.assertAlmostEqual((12.0 - 0.70) / result.ib, 1_000_000.0, places=3)
+
+    def test_emitter_reference_operating_point(self):
+        result = solve_mode("emitter", parse_form(EMITTER, mode="emitter"))
+        self.assertAlmostEqual(result.ic * 1e3, 1.0263, places=4)
+        self.assertAlmostEqual(result.ve, 1.0366, places=4)
+        self.assertAlmostEqual(result.vce, 8.7054, places=4)
+        self.assertIs(result.region, Region.ACTIVE)
+
+    def test_larger_re_reduces_ic(self):
+        small = solve_mode("emitter", parse_form(EMITTER, mode="emitter"))
+        large = solve_mode("emitter", parse_form(dict(EMITTER, re="2"), mode="emitter"))
+        self.assertLess(large.ic, small.ic)
+        self.assertAlmostEqual(large.ic * 1e3, 0.9401, places=4)
+        self.assertAlmostEqual(large.vce, 8.0328, places=4)
+
+    def test_unknown_mode_in_solve_mode(self):
+        with self.assertRaises(ValueError):
+            solve_mode("unknown", parse_form(FIXED, mode="fixed"))
 
 
 if __name__ == "__main__":

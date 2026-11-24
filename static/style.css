@@ -20,7 +20,7 @@ body {
 }
 
 .card {
-  max-width: 860px;
+  max-width: 1180px;
   margin: 0 auto;
   background: #fff;
   border: 1px solid var(--line);
@@ -60,6 +60,50 @@ h1 {
   gap: 6px;
 }
 
+.field-group {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 14px 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.field-group legend {
+  padding: 0 6px;
+  color: var(--navy);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.field-group .form-grid {
+  gap: 12px 20px;
+}
+
+.field-group.mode-group .form-grid {
+  grid-template-columns: 1fr;
+}
+
+.mode-field .form-grid,
+.mode-field .hint {
+  max-width: 100%;
+}
+
+.form-alert {
+  grid-column: 1 / -1;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #8a241c;
+  background: #fff5f4;
+  border: 1px solid #f0c4bf;
+  border-left: 4px solid #b3261e;
+  border-radius: 6px;
+}
+
+.form-alert ul {
+  margin: 6px 0 0;
+  padding-left: 20px;
+}
+
 label {
   font-size: 14px;
   font-weight: 600;
@@ -71,7 +115,8 @@ label {
   color: var(--muted);
 }
 
-input {
+input,
+select {
   padding: 9px 11px;
   font: inherit;
   color: var(--ink);
@@ -80,14 +125,28 @@ input {
   border-radius: 6px;
 }
 
-input:focus {
+input:focus,
+select:focus {
   outline: 2px solid var(--blue);
   outline-offset: 1px;
   border-color: var(--blue);
 }
 
+.mode-field {
+  grid-column: 1 / -1;
+}
+
+.hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
 .actions {
   grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-top: 4px;
 }
 
@@ -104,6 +163,16 @@ button {
 
 button:hover {
   background: var(--navy);
+}
+
+button.secondary {
+  color: var(--navy);
+  background: #eaf2f8;
+  border: 1px solid var(--line);
+}
+
+button.secondary:hover {
+  background: #dbe9f4;
 }
 
 @media (max-width: 640px) {
@@ -126,6 +195,12 @@ button:hover {
   margin: 0;
   font-size: 13px;
   color: #b3261e;
+}
+
+.field:has(.error) input,
+.field:has(.error) select {
+  border-color: #b3261e;
+  background: #fff7f6;
 }
 
 /* ---------- ผลลัพธ์ ---------- */
@@ -215,4 +290,269 @@ tbody th {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+/* ---------- Lab 04: แยกส่วน Analytical กับ SPICE ---------- */
+
+.head {
+  margin-bottom: 24px;
+}
+
+.panel {
+  padding-bottom: 8px;
+}
+
+.panel + .panel {
+  margin-top: 28px;
+  padding-top: 26px;
+  border-top: 2px solid var(--line);
+}
+
+.panel h2 {
+  margin-bottom: 10px;
+}
+
+.soft {
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+h3 {
+  margin: 22px 0 10px;
+  font-size: 1rem;
+  color: var(--navy);
+}
+
+.error-state {
+  border: 1px solid #f0c4bf;
+  border-radius: 8px;
+  padding: 16px 18px;
+  background: #fff7f6;
+}
+
+.error-state h2 {
+  color: #a3261e;
+}
+
+.run-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--ink);
+  background: #eaf5f0;
+  border: 1px solid #bfe0d6;
+  border-radius: 8px;
+}
+
+.run-pill {
+  font-weight: 700;
+  color: #0b5d4f;
+}
+
+.run-strip strong {
+  color: var(--navy);
+}
+
+.provenance {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 16px;
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  font-size: 13px;
+  background: #f0f6fb;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.provenance dt {
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.provenance dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.chart {
+  margin: 18px 0;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.chart-grid .chart {
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .chart-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+.chart figcaption {
+  padding: 2px 6px 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.plot {
+  display: block;
+  width: 100%;
+  min-width: 320px;
+  height: auto;
+}
+
+.axis,
+.axis-label,
+.axis-title,
+.legend,
+.plot-empty {
+  fill: var(--muted);
+  font-size: 15px;
+}
+
+.axis {
+  stroke: #9db3c6;
+  stroke-width: 1;
+}
+
+.axis-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.plot-empty {
+  font-size: 14px;
+}
+
+polyline.gain,
+text.gain-text {
+  fill: #b3261e;
+  stroke: #b3261e;
+}
+
+polyline.phase,
+text.phase-text {
+  fill: #1d638b;
+  stroke: #1d638b;
+}
+
+.axis.phase-axis {
+  stroke: #1d638b;
+}
+
+.axis-label.phase-label,
+.axis-title.phase-title {
+  fill: #1d638b;
+}
+
+polyline.vin,
+text.vin-text {
+  fill: #1d638b;
+  stroke: #1d638b;
+}
+
+polyline.vout,
+text.vout-text {
+  fill: #0b7a5b;
+  stroke: #0b7a5b;
+}
+
+polyline.gain,
+polyline.phase,
+polyline.vin,
+polyline.vout {
+  fill: none;
+  stroke-width: 2.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.legend {
+  stroke: #fff;
+  stroke-width: 4;
+  paint-order: stroke fill;
+}
+
+.evidence {
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.evidence summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--blue);
+}
+
+pre {
+  max-height: 260px;
+  margin: 8px 0 0;
+  padding: 12px;
+  overflow: auto;
+  font: 12px/1.5 Consolas, "Courier New", monospace;
+  color: var(--ink);
+  background: #f5f8fc;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 640px) {
+  .head h1 {
+    font-size: 1.35rem;
+  }
+
+  .provenance {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .provenance dd {
+    margin-bottom: 6px;
+  }
+
+  .chart {
+    padding: 4px;
+  }
+
+  .plot {
+    min-width: 0;
+  }
+
+  .axis-label {
+    font-size: 24px;
+  }
+
+  .axis-title {
+    font-size: 25px;
+  }
+
+  .legend {
+    font-size: 24px;
+  }
+
+  .chart figcaption {
+    font-size: 13px;
+  }
+
+  tbody th {
+    width: 48%;
+  }
 }

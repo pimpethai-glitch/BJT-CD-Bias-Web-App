@@ -14,6 +14,15 @@ from typing import Mapping
 
 FIELDS = ("vcc", "r1", "r2", "rc", "re", "beta", "vbe")
 
+# Lab 03: แต่ละโหมดรับเฉพาะตัวต้านทานที่วงจรใช้จริง
+MODES = ("divider", "fixed", "emitter")
+MODE_FIELDS = {
+    "divider": ("vcc", "r1", "r2", "rc", "re", "beta", "vbe"),
+    "fixed": ("vcc", "rb", "rc", "beta", "vbe"),
+    "emitter": ("vcc", "rb", "re", "rc", "beta", "vbe"),
+}
+VCE_MIN = 0.2  # ตามใบงาน Lab 03: VCE <= 0.2 V → แบบจำลอง forward-active ใช้ไม่ได้
+
 
 class Region(str, Enum):
     """บริเวณการทำงานที่แบบจำลอง forward-active ใช้ได้หรือไม่"""
@@ -25,15 +34,17 @@ class Region(str, Enum):
 
 @dataclass(frozen=True)
 class BiasInput:
-    """ค่าอุปกรณ์ตามที่ผู้ใช้กรอก: VCC/VBE [V], ตัวต้านทาน [kΩ], beta ไม่มีหน่วย"""
+    """ค่าที่ผู้ใช้กรอก: VCC/VBE [V], R1/R2/RC/RE [kΩ], RB [MΩ], beta ไม่มีหน่วย"""
 
-    vcc: float
-    r1: float
-    r2: float
-    rc: float
-    re: float
-    beta: float
-    vbe: float
+    # ค่าที่โหมดหนึ่งไม่ใช้จะเป็น 0.0 (โหมดอื่นไม่นำไปคำนวณ)
+    vcc: float = 0.0
+    r1: float = 0.0
+    r2: float = 0.0
+    rc: float = 0.0
+    re: float = 0.0
+    beta: float = 0.0
+    vbe: float = 0.0
+    rb: float = 0.0  # [MΩ] ใช้เฉพาะโหมด Fixed / Emitter (1 MΩ = 1,000 kΩ)
 
 
 class ValidationError(Exception):
@@ -44,16 +55,20 @@ class ValidationError(Exception):
         self.errors = dict(errors)
 
 
-def parse_form(values: Mapping[str, str]) -> BiasInput:
-    """แปลงค่าจากฟอร์ม (string ทั้งหมด) เป็น BiasInput
+def parse_form(values: Mapping[str, str], mode: str = "divider") -> BiasInput:
+    """แปลงค่าจากฟอร์ม (string ทั้งหมด) เป็น BiasInput ตามโหมดที่เลือก
 
     เก็บ error ของทุกฟิลด์ไว้พร้อมกันแล้วค่อย raise ครั้งเดียว
     เพื่อให้หน้าเว็บแสดงข้อผิดพลาดได้ครบในครั้งเดียว
     """
+    if mode not in MODE_FIELDS:
+        raise ValidationError({"mode": "โหมดวงจรไม่ถูกต้อง"})
+
     errors: dict[str, str] = {}
     numbers: dict[str, float] = {}
+    fields = MODE_FIELDS[mode]
 
-    for field in FIELDS:
+    for field in fields:
         label = field.upper()
         raw = values.get(field)
         if raw is None or str(raw).strip() == "":
@@ -78,7 +93,7 @@ def parse_form(values: Mapping[str, str]) -> BiasInput:
     if "vcc" in numbers and numbers["vcc"] <= 0:
         errors["vcc"] = "VCC ต้องมากกว่า 0"
 
-    for field in ("r1", "r2", "rc", "re"):
+    for field in ("r1", "r2", "rb", "rc", "re"):
         if field in numbers and numbers[field] <= 0:
             errors[field] = f"{field.upper()} ต้องมากกว่า 0"
 
@@ -148,9 +163,9 @@ def solve(data: BiasInput) -> BiasResult:
     vc = data.vcc - ic * rc
     vce = vc - ve
 
-    if vce <= 0.3:
+    if vce <= VCE_MIN:
         warning = (
-            f"VCE = {vce:.3f} V ต่ำกว่า 0.3 V ทรานซิสเตอร์อยู่ในช่วง saturation "
+            f"VCE = {vce:.3f} V ไม่เกิน {VCE_MIN:.1f} V ทรานซิสเตอร์อยู่ในช่วง saturation "
             "แบบจำลอง forward-active ใช้ไม่ได้ ค่าที่แสดงไม่ควรนำไปใช้"
         )
         return BiasResult(
@@ -172,3 +187,110 @@ def solve(data: BiasInput) -> BiasResult:
         region=Region.ACTIVE,
         warnings=(),
     )
+
+
+def solve_divider(data: BiasInput) -> BiasResult:
+    """Voltage Divider Bias — ใช้ solve() เดิมเพื่อคงผล Lab 02 ทุกประการ"""
+    return solve(data)
+
+
+def solve_fixed(data: BiasInput) -> BiasResult:
+    """Fixed Bias: RB ต่อจาก VCC ไป Base, Emitter ต่อลงกราวด์โดยตรง
+
+    IB = (VCC − VBE) / RB, VE = 0, VB = VBE
+    """
+    rb = data.rb * 1_000_000.0  # RB กรอกเป็น MΩ → Ω
+    rc = data.rc * 1000.0
+
+    ib = (data.vcc - data.vbe) / rb
+    if ib <= 0:
+        warning = (
+            f"IB = {ib:.6g} A ไม่มากกว่าศูนย์ วงจรอยู่ในช่วง cutoff "
+            "แบบจำลอง forward-active ใช้ไม่ได้"
+        )
+        return BiasResult(
+            vth=0.0, rth=0.0, ib=0.0, ic=0.0, ie=0.0,
+            ve=0.0, vb=data.vbe, vc=data.vcc, vce=data.vcc,
+            region=Region.CUTOFF, warnings=(warning,),
+        )
+
+    ic = data.beta * ib
+    ie = (data.beta + 1) * ib
+    ve = 0.0
+    vb = data.vbe
+    vc = data.vcc - ic * rc
+    vce = vc - ve
+
+    if vce <= VCE_MIN:
+        warning = (
+            f"VCE = {vce:.3f} V ไม่เกิน {VCE_MIN:.1f} V อยู่ในช่วง saturation "
+            "แบบจำลอง forward-active ใช้ไม่ได้ ค่าที่แสดงไม่ควรนำไปใช้"
+        )
+        return BiasResult(
+            vth=0.0, rth=0.0, ib=ib, ic=ic, ie=ie,
+            ve=ve, vb=vb, vc=vc, vce=vce,
+            region=Region.SATURATION, warnings=(warning,),
+        )
+
+    return BiasResult(
+        vth=0.0, rth=0.0, ib=ib, ic=ic, ie=ie,
+        ve=ve, vb=vb, vc=vc, vce=vce,
+        region=Region.ACTIVE,
+    )
+
+
+def solve_emitter(data: BiasInput) -> BiasResult:
+    """Emitter Bias แบบแหล่งจ่ายเดียว: RB ไป Base และ RE จาก Emitter ลงกราวด์
+
+    IB = (VCC − VBE) / [RB + (β + 1)RE]
+    """
+    rb = data.rb * 1_000_000.0  # RB กรอกเป็น MΩ → Ω
+    rc = data.rc * 1000.0
+    re = data.re * 1000.0
+
+    ib = (data.vcc - data.vbe) / (rb + (data.beta + 1) * re)
+    if ib <= 0:
+        warning = (
+            f"IB = {ib:.6g} A ไม่มากกว่าศูนย์ วงจรอยู่ในช่วง cutoff "
+            "แบบจำลอง forward-active ใช้ไม่ได้"
+        )
+        return BiasResult(
+            vth=0.0, rth=0.0, ib=0.0, ic=0.0, ie=0.0,
+            ve=0.0, vb=data.vbe, vc=data.vcc, vce=data.vcc,
+            region=Region.CUTOFF, warnings=(warning,),
+        )
+
+    ic = data.beta * ib
+    ie = (data.beta + 1) * ib
+    ve = ie * re
+    vb = ve + data.vbe
+    vc = data.vcc - ic * rc
+    vce = vc - ve
+
+    if vce <= VCE_MIN:
+        warning = (
+            f"VCE = {vce:.3f} V ไม่เกิน {VCE_MIN:.1f} V อยู่ในช่วง saturation "
+            "แบบจำลอง forward-active ใช้ไม่ได้ ค่าที่แสดงไม่ควรนำไปใช้"
+        )
+        return BiasResult(
+            vth=0.0, rth=0.0, ib=ib, ic=ic, ie=ie,
+            ve=ve, vb=vb, vc=vc, vce=vce,
+            region=Region.SATURATION, warnings=(warning,),
+        )
+
+    return BiasResult(
+        vth=0.0, rth=0.0, ib=ib, ic=ic, ie=ie,
+        ve=ve, vb=vb, vc=vc, vce=vce,
+        region=Region.ACTIVE,
+    )
+
+
+def solve_mode(mode: str, data: BiasInput) -> BiasResult:
+    """เลือกสมการตามโหมดที่ฟอร์มส่งมา — โหมดที่ไม่รู้จักต้องไม่เดาเป็น Divider"""
+    if mode == "divider":
+        return solve_divider(data)
+    if mode == "fixed":
+        return solve_fixed(data)
+    if mode == "emitter":
+        return solve_emitter(data)
+    raise ValueError(f"unknown bias mode: {mode}")
